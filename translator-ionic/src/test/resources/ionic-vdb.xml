@@ -1,0 +1,49 @@
+<vdb name="ionic" version="1">
+    
+    <model visible="false" name="PM1" type="VIRTUAL">
+        <metadata type = "DDL"><![CDATA[        
+            CREATE VIEW G1 (e1 integer PRIMARY KEY, e2 varchar(25)) as
+               select 0, 'ABCD'
+               union all
+               select 1, 'EFGH'
+               union all
+               select 2, 'IJKL';
+        ]]>
+       </metadata>        
+    </model>
+    <model visible="false" name="KT" type="VIRTUAL">
+        <metadata type = "DDL"><![CDATA[        
+            CREATE VIEW RowTable (pk integer PRIMARY KEY, key_tag varchar(25)) as 
+            	select 0 as pk, 'tag1' as key_tag
+            	union all
+            	select 1 as pk, 'tag2' as key_tag
+            	union all
+            	select 2 as pk, 'tag3' as key_tag;
+
+            CREATE VIEW ColTable (col_name varchar(25) PRIMARY KEY, key_tag varchar(25)) as 
+            	select 'e1' as pk, 'tag1' as key_tag
+            	union all
+            	select 'e2' as pk, 'tag2' as key_tag;
+        ]]>
+       </metadata>        
+    </model>
+    <model visible="true" name="VM1" type="VIRTUAL">
+        <metadata type = "DDL"><![CDATA[        
+            create view G1WithRowFilter (e1 integer PRIMARY KEY, e2 varchar(25)) OPTIONS (UPDATABLE true) 
+            	as select e1, e2  from (PM1.G1 as t inner join KT.RowTable as kt on t.e1 = kt.pk) 
+    			inner join /*+ makedep */ IM.Permissions p on p.key_tag = kt.key_tag;
+
+            create view G1WithRowColFilter (e1 integer PRIMARY KEY, e2 varchar(25)) OPTIONS (UPDATABLE true) 
+            	as select 
+            		case when has_col_access('PM1.G1', 'e1', (select key_tag from KT.ColTable where col_name='e1')) then e1 end as e1, 
+            		case when has_col_access('PM1.G2', 'e2', (select key_tag from KT.ColTable where col_name='e2')) then e2 end as e2  
+            	from 
+            		(PM1.G1 as t inner join KT.RowTable as kt on t.e1 = kt.pk) 
+    				inner join /*+ makedep */ IM.Permissions p on p.key_tag = kt.key_tag;            	 
+        ]]>
+       </metadata>        
+    </model>
+    <model visible="true" name="IM">
+	    <source name="ionic" translator-name="ionic"/>
+    </model>      
+</vdb>
