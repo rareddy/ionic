@@ -30,7 +30,10 @@ import javax.security.auth.Subject;
 
 public interface IonicConnection extends Connection {
     
-	List<String> filter(Subject subject, String sourceTableName, List<String> keyTags);
+	List<String> filter(Subject subject, String sourceTableName, List<Object> keyTags);
 	
 	boolean hasColumnAccess(Subject subject, String sourceTableName, String columnName, String keytag);
+	
+	String createKeyTag(Subject subject, String sourceTableName, Object primaryKey);
+	
 }

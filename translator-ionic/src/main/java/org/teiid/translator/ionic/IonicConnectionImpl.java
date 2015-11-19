@@ -24,42 +24,14 @@ package org.teiid.translator.ionic;
 
 import java.util.List;
 
-import javax.resource.ResourceException;
-import javax.resource.cci.ConnectionMetaData;
-import javax.resource.cci.Interaction;
-import javax.resource.cci.LocalTransaction;
-import javax.resource.cci.ResultSetInfo;
 import javax.security.auth.Subject;
 
-public class IonicConnectionImpl implements IonicConnection {
+import org.teiid.resource.spi.BasicConnection;
 
-	public Interaction createInteraction() throws ResourceException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public LocalTransaction getLocalTransaction() throws ResourceException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public ConnectionMetaData getMetaData() throws ResourceException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public ResultSetInfo getResultSetInfo() throws ResourceException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void close() throws ResourceException {
-		// TODO Auto-generated method stub
-
-	}
+public class IonicConnectionImpl extends BasicConnection implements IonicConnection {
 
 	public List<String> filter(Subject subject, String sourceTableName,
-			List<String> keyTags) {
+			List<Object> keyTags) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -70,4 +42,19 @@ public class IonicConnectionImpl implements IonicConnection {
 		return false;
 	}
 
+	public String createKeyTag(Subject subject, String sourceTableName,
+			Object primaryKey) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void close() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void cancel() {
+		// TODO Auto-generated method stub
+		
+	}
 }

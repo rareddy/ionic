@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import javax.resource.ResourceException;
 import javax.security.auth.Subject;
 
 import org.teiid.resource.spi.BasicConnection;
@@ -13,7 +12,7 @@ import org.teiid.resource.spi.BasicConnection;
 public class MockIonicConnection extends BasicConnection implements IonicConnection {
 
 	public List<String> filter(Subject subject, String sourceTableName,
-			List<String> keyTags) {
+			List<Object> keyTags) {
 		Set<Principal> users = subject.getPrincipals();
 		if (!users.isEmpty()) {
 			Principal p = users.iterator().next();
@@ -30,7 +29,6 @@ public class MockIonicConnection extends BasicConnection implements IonicConnect
 
 	public boolean hasColumnAccess(Subject subject, String sourceTableName,
 			String columnName, String keytag) {
-		
 		Set<Principal> users = subject.getPrincipals();
 		if (!users.isEmpty()) {
 			Principal p = users.iterator().next();
@@ -45,7 +43,17 @@ public class MockIonicConnection extends BasicConnection implements IonicConnect
 		return false;
 	}
 
-	public void close() throws ResourceException {
+	public void close() {
+		
+	}
+
+	public String createKeyTag(Subject subject, String sourceTableName,
+			Object primaryKey) {
+		return "tag1" ;
+	}
+
+	public void cancel() {
+		// TODO Auto-generated method stub
 		
 	}
 }

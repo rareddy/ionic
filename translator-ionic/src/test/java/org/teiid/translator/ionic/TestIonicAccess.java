@@ -116,6 +116,18 @@ public class TestIonicAccess {
 	}
 	
 	@Test
+	public void checkColTable() throws Exception {
+		Properties props = new Properties();
+		props.setProperty("user", "sally");
+		
+		Connection conn = es.getDriver().connect("jdbc:teiid:ionic", props);
+		ResultSet rs = conn.createStatement().executeQuery("select key_tag from KT.ColTable where col_name='e1' and table_name = 'PM1.G1'");
+		rs.next();
+		assertEquals("tag1", rs.getString(1));
+		conn.close();
+	}	
+	
+	@Test
 	public void testRowFilter() throws Exception {
 		Properties props = new Properties();
 		props.setProperty("user", "sally");
@@ -148,34 +160,71 @@ public class TestIonicAccess {
 	}
 	
 	@Test
-	public void testColTable() throws Exception {
+	public void testHasAccess() throws Exception {
 		Properties props = new Properties();
 		props.setProperty("user", "sally");
 		
 		Connection conn = es.getDriver().connect("jdbc:teiid:ionic", props);
-		ResultSet rs = conn.createStatement().executeQuery("select ionic.has_col_access('PM1.G1','e1', 'tag1')");
-		rs.next();
-		assertEquals(true, rs.getBoolean(1));
-		
-		rs = conn.createStatement().executeQuery("select ionic.has_col_access('PM1.G1','e1', 'tag2')");
-		rs.next();
-		assertEquals(false, rs.getBoolean(1));
 
+		String sql = "select a.* from "
+				+ "TABLE(select key_tag from KT.ColTable where col_name='e1' and table_name = 'PM1.G1') t, "
+				+ "TABLE(exec has_col_access('PM1.G1', 'e1', t.key_tag)) as a";
+		ResultSet rs = conn.createStatement().executeQuery(sql);
+		rs.next();
+		assertEquals(true, rs.getObject(1));
+		
+		sql = "select a.* from "
+				+ "TABLE(select key_tag from KT.ColTable where col_name='e2' and table_name = 'PM1.G1') t, "
+				+ "TABLE(exec has_col_access('PM1.G1', 'e2', t.key_tag)) as a";
+		rs = conn.createStatement().executeQuery(sql);
+		rs.next();
+		assertEquals(false, rs.getObject(1));		
+		
 		conn.close();		
 	}
 	
 	
 	@Test
 	public void testRowColFiltering() throws Exception {
+		
+		// sally can only see "e1"
 		Properties props = new Properties();
 		props.setProperty("user", "sally");
 		
 		Connection conn = es.getDriver().connect("jdbc:teiid:ionic", props);
 		ResultSet rs = conn.createStatement().executeQuery("select * from VM1.G1WithRowColFilter");
 		rs.next();
-		assertEquals(0, rs.getInt(1));
-		assertEquals("ABCD", rs.getString(2));
+		assertEquals(0, rs.getObject(1));
+		assertEquals(null, rs.getObject(2));
 
 		conn.close();		
+		
+		// Joe can only see "e2"
+		props = new Properties();
+		props.setProperty("user", "joe");
+		
+		conn = es.getDriver().connect("jdbc:teiid:ionic", props);
+		rs = conn.createStatement().executeQuery("select * from VM1.G1WithRowColFilter");
+		rs.next();
+		assertEquals(null, rs.getObject(1));
+		assertEquals("EFGH", rs.getObject(2));		
+		
+		
+		// mary can see both
+		props = new Properties();
+		props.setProperty("user", "mary");
+		
+		conn = es.getDriver().connect("jdbc:teiid:ionic", props);
+		rs = conn.createStatement().executeQuery("select * from VM1.G1WithRowColFilter");
+		rs.next();
+		assertEquals(0, rs.getObject(1));
+		assertEquals("ABCD", rs.getObject(2));		
+		rs.next();
+		assertEquals(1, rs.getObject(1));
+		assertEquals("EFGH", rs.getObject(2));		
+		rs.next();
+		assertEquals(2, rs.getObject(1));
+		assertEquals("IJKL", rs.getObject(2));		
+		
 	}	
 }

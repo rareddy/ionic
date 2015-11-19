@@ -20,10 +20,10 @@
             	union all
             	select 2 as pk, 'tag3' as key_tag;
 
-            CREATE VIEW ColTable (col_name varchar(25) PRIMARY KEY, key_tag varchar(25)) as 
-            	select 'e1' as pk, 'tag1' as key_tag
+            CREATE VIEW ColTable (table_name varchar(25), col_name varchar(25), key_tag varchar(25)) as 
+            	select 'PM1.G1', 'e1',  'tag1' 
             	union all
-            	select 'e2' as pk, 'tag2' as key_tag;
+            	select 'PM1.G1', 'e2',  'tag2';
         ]]>
        </metadata>        
     </model>
@@ -35,11 +35,13 @@
 
             create view G1WithRowColFilter (e1 integer PRIMARY KEY, e2 varchar(25)) OPTIONS (UPDATABLE true) 
             	as select 
-            		case when has_col_access('PM1.G1', 'e1', (select key_tag from KT.ColTable where col_name='e1')) then e1 end as e1, 
-            		case when has_col_access('PM1.G2', 'e2', (select key_tag from KT.ColTable where col_name='e2')) then e2 end as e2  
+            		case when (exec has_col_access('PM1.G1', 'e1', t1.key_tag)) then t.e1 end as e1, 
+            		case when (exec has_col_access('PM1.G2', 'e2', t2.key_tag)) then t.e2 end as e2  
             	from 
+            	    TABLE (select key_tag from KT.ColTable where col_name='e1' and table_name='PM1.G1') as t1,
+            	    TABLE (select key_tag from KT.ColTable where col_name='e2' and table_name='PM1.G1') as t2,
             		(PM1.G1 as t inner join KT.RowTable as kt on t.e1 = kt.pk) 
-    				inner join /*+ makedep */ IM.Permissions p on p.key_tag = kt.key_tag;            	 
+    				inner join /*+ makedep */ IM.Permissions p on p.key_tag = kt.key_tag;     
         ]]>
        </metadata>        
     </model>

@@ -25,35 +25,35 @@ package org.teiid.translator.ionic;
 import javax.resource.cci.ConnectionFactory;
 
 import org.teiid.core.types.DataTypeManager;
+import org.teiid.language.Call;
 import org.teiid.language.QueryExpression;
 import org.teiid.language.Select;
 import org.teiid.metadata.MetadataFactory;
+import org.teiid.metadata.Procedure;
+import org.teiid.metadata.ProcedureParameter;
 import org.teiid.metadata.RuntimeMetadata;
 import org.teiid.metadata.Table;
 import org.teiid.translator.ExecutionContext;
 import org.teiid.translator.ExecutionFactory;
+import org.teiid.translator.ProcedureExecution;
 import org.teiid.translator.ResultSetExecution;
 import org.teiid.translator.Translator;
 import org.teiid.translator.TranslatorException;
-import org.teiid.translator.TypeFacility;
 
 @Translator(name="ionic", description="Ionic translator for enforcing entitlements")
 public class IonicExecutionFactory extends ExecutionFactory<ConnectionFactory, IonicConnection> {
+	public static final String PKEY = "pkey";
+	public static final String RETURN = "return";
+	public static final String COLUMN_NAME = "column_name";
+	public static final String SOURCE_TABLE = "source_table";
 	public static final String CREATE_KEY_TAG = "create_key_tag";
-	public static final String HAS_ACCESS = "has_col_access";
+	public static final String HAS_COLUMN_ACCESS = "has_col_access";
 	public static final String KEY_TAG = "key_tag";
 	public static final String PERMISSIONS_TABLE = "Permissions";
-	private static final String IONIC = "ionic"; //$NON-NLS-1$
 	
     @Override
     public void start() throws TranslatorException {
     	super.start();
-    	//access = has_access(table_name, col_name, col_key_tag)
-        addPushDownFunction(IONIC, HAS_ACCESS, TypeFacility.RUNTIME_NAMES.BOOLEAN, 
-        		TypeFacility.RUNTIME_NAMES.STRING, TypeFacility.RUNTIME_NAMES.STRING, TypeFacility.RUNTIME_NAMES.STRING); //$NON-NLS-1$
-        // keytag = create_key_tag(table_name, pk)
-        addPushDownFunction(IONIC, CREATE_KEY_TAG, TypeFacility.RUNTIME_NAMES.STRING, 
-        		TypeFacility.RUNTIME_NAMES.STRING, TypeFacility.RUNTIME_NAMES.OBJECT); //$NON-NLS-1$ 
     }
 
     @Override
@@ -62,7 +62,15 @@ public class IonicExecutionFactory extends ExecutionFactory<ConnectionFactory, I
 			IonicConnection connection)
     		throws TranslatorException {
     	return new IonicExecution((Select)command, executionContext, metadata, getConnection(null, executionContext));
-    }    
+    }
+    
+	@Override
+	public ProcedureExecution createProcedureExecution(Call command,
+			ExecutionContext executionContext, RuntimeMetadata metadata,
+			IonicConnection connection) throws TranslatorException {
+		return new IonicProcedureExecution(command, executionContext, metadata,
+				getConnection(null, executionContext));
+	}    
     
     @Override
     public boolean supportsInCriteria() {
@@ -103,10 +111,23 @@ public class IonicExecutionFactory extends ExecutionFactory<ConnectionFactory, I
 	public void getMetadata(MetadataFactory metadataFactory,
 			IonicConnection connection) throws TranslatorException {
 		
+		// permissions table
         Table table = metadataFactory.addTable(PERMISSIONS_TABLE);
         table.setSupportsUpdate(false);
-        
         metadataFactory.addColumn(KEY_TAG, DataTypeManager.DefaultDataTypes.STRING, table);
+        
+        // has_column_access
+        Procedure p = metadataFactory.addProcedure(HAS_COLUMN_ACCESS);
+        metadataFactory.addProcedureParameter(SOURCE_TABLE, DataTypeManager.DefaultDataTypes.STRING, ProcedureParameter.Type.In, p);
+        metadataFactory.addProcedureParameter(COLUMN_NAME, DataTypeManager.DefaultDataTypes.STRING, ProcedureParameter.Type.In, p);
+        metadataFactory.addProcedureParameter(KEY_TAG, DataTypeManager.DefaultDataTypes.STRING, ProcedureParameter.Type.In, p);
+        metadataFactory.addProcedureParameter(RETURN, DataTypeManager.DefaultDataTypes.BOOLEAN, ProcedureParameter.Type.ReturnValue, p);
+        
+        // create_key_string
+        p = metadataFactory.addProcedure(CREATE_KEY_TAG);
+        metadataFactory.addProcedureParameter(SOURCE_TABLE, DataTypeManager.DefaultDataTypes.STRING, ProcedureParameter.Type.In, p);
+        metadataFactory.addProcedureParameter(PKEY, DataTypeManager.DefaultDataTypes.OBJECT, ProcedureParameter.Type.In, p);
+        metadataFactory.addProcedureParameter(RETURN, DataTypeManager.DefaultDataTypes.STRING, ProcedureParameter.Type.ReturnValue, p);
 	}
 
 	@Override

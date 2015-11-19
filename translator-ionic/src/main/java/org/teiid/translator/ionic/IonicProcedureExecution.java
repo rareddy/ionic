@@ -19,72 +19,76 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
  */
-
 package org.teiid.translator.ionic;
 
-
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.teiid.language.Select;
+import org.teiid.language.Argument;
+import org.teiid.language.Call;
 import org.teiid.metadata.RuntimeMetadata;
 import org.teiid.translator.DataNotAvailableException;
 import org.teiid.translator.ExecutionContext;
-import org.teiid.translator.ResultSetExecution;
+import org.teiid.translator.ProcedureExecution;
 import org.teiid.translator.TranslatorException;
 
+public class IonicProcedureExecution implements ProcedureExecution {
 
-/**
- * Represents the execution of a command.
- */
-public class IonicExecution implements ResultSetExecution {
-
-	private Select command;
+	private Call command;
 	private ExecutionContext executionContext;
 	private RuntimeMetadata metadata;
 	private IonicConnection connection;
-	private Iterator<?> resultIter;
+	private Object result;
 	
-	public IonicExecution (Select command,
+	public IonicProcedureExecution(Call command,
 			ExecutionContext executionContext, RuntimeMetadata metadata,
-			IonicConnection connection){
+			IonicConnection connection) {
 		this.command = command;
 		this.executionContext = executionContext;
 		this.metadata = metadata;
-		this.connection = connection;
-	}
-	
-	public void execute() throws TranslatorException {
-		IonicSQLVisitor visitor = new IonicSQLVisitor();
-		visitor.execute(this.command, this);
-	}
-	
-	public void execute(String tableName, List<String> columns, Map<String, List<Object>> values){
-		if (tableName.equalsIgnoreCase(IonicExecutionFactory.PERMISSIONS_TABLE)){
-			List<?> result = this.connection.filter(this.executionContext.getSubject(), tableName, 
-					values.get(IonicExecutionFactory.KEY_TAG));
-			if (result != null) {
-				this.resultIter = result.iterator();
-			}
-		}
+		this.connection = connection;		
 	}
 
-	public List<?> next() throws TranslatorException, DataNotAvailableException {
-		if (this.resultIter != null && this.resultIter.hasNext()) {
-			return Arrays.asList(this.resultIter.next());
+
+	public void execute() throws TranslatorException {
+		Map<String, Object> parameters = getParameters(this.command.getArguments());
+		if (this.command.getProcedureName().equals(IonicExecutionFactory.HAS_COLUMN_ACCESS)){
+			this.result = this.connection.hasColumnAccess(this.executionContext.getSubject(), 
+					(String)parameters.get(IonicExecutionFactory.SOURCE_TABLE), 
+					(String)parameters.get(IonicExecutionFactory.COLUMN_NAME), 
+					(String)parameters.get(IonicExecutionFactory.KEY_TAG));
+		} else if (command.getProcedureName().equals(IonicExecutionFactory.CREATE_KEY_TAG)) {
+			this.result = this.connection.createKeyTag(this.executionContext.getSubject(), 
+					(String)parameters.get(IonicExecutionFactory.SOURCE_TABLE), 
+					(String)parameters.get(IonicExecutionFactory.PKEY));
+			
+		} else {
+			throw new TranslatorException("Procedure not found");
 		}
-		this.resultIter = null;
+	}
+	
+	private Map<String, Object> getParameters(List<Argument> arguments){
+		HashMap<String, Object> parameters = new HashMap<String, Object>();
+		for (Argument arg:arguments) {
+			parameters.put(arg.getMetadataObject().getName(), arg.getArgumentValue().getValue());
+		}
+		return parameters;
+	}
+	
+	public List<?> next() throws TranslatorException, DataNotAvailableException {
 		return null;
 	}
-	
+
 	public void close() {
-		this.resultIter = null;
-	}
+	}	
 
 	public void cancel() throws TranslatorException {
-		//no-op - can not stop
 	}
+	
+	public List<?> getOutputParameterValues() throws TranslatorException {
+		return Arrays.asList(this.result);
+	}
+
 }

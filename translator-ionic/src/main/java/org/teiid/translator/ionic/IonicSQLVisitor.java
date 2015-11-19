@@ -44,18 +44,16 @@ import org.teiid.translator.TranslatorException;
 public class IonicSQLVisitor extends HierarchyVisitor {
 	private String tableName;
 	private List<String> selectedColumns = new ArrayList<String>();
-	private Map<String, List<String>> filterValues = new HashMap<String, List<String>>();
+	private Map<String, List<Object>> filterValues = new HashMap<String, List<Object>>();
 	protected Stack<Object> onGoingExpression  = new Stack<Object>();
 	protected ArrayList<TranslatorException> exceptions = new ArrayList<TranslatorException>();
-	private String functionName;
-	private List<String> functionParameters;
 	
 	@Override
     public void visit(In obj) {
         visitNode(obj.getLeftExpression());
         Column c = (Column)this.onGoingExpression.pop();
         
-        ArrayList<String> values = new ArrayList<String>();
+        ArrayList<Object> values = new ArrayList<Object>();
         for (Expression expr:obj.getRightExpressions()){
         	visitNode(expr);
         	values.add(this.onGoingExpression.pop().toString());
@@ -74,32 +72,13 @@ public class IonicSQLVisitor extends HierarchyVisitor {
 			visitNode(obj.getLeftExpression());
 			Column c = (Column)this.onGoingExpression.pop();
 			visitNode(obj.getRightExpression());
-			ArrayList<String> values = new ArrayList<String>();
+			ArrayList<Object> values = new ArrayList<Object>();
 			values.add(this.onGoingExpression.pop().toString());
 			this.filterValues.put(c.getName(), values);
 		} else {
 			this.exceptions.add(new TranslatorException("Only Equality supported"));
 		}
 		
-	}	
-	
-	@Override
-	public void visit(Function obj) {
-		String funcName = obj.getName();
-		if (funcName.indexOf('.') != -1) {
-			funcName = funcName.substring(funcName.indexOf('.')+1);
-		}
-		this.functionName = funcName;
-		
-    	List<Expression> args = obj.getParameters();
-		if (args != null && args.size() > 0) {
-			ArrayList<String> values = new ArrayList<String>();
-			for (Expression expr : args) {
-				visitNode(expr);
-				values.add(this.onGoingExpression.pop().toString());
-			}
-			this.functionParameters = values;
-		}
 	}	
 	
 	@Override
@@ -131,9 +110,6 @@ public class IonicSQLVisitor extends HierarchyVisitor {
 		
 		if (this.tableName != null){
 			ionicExecution.execute(this.tableName, this.selectedColumns, this.filterValues);
-		} else if (this.functionName != null){
-			ionicExecution.executeFunction(this.functionName, this.functionParameters);
-		}
-		
+		} 
 	}
 }
